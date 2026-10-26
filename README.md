@@ -7,7 +7,7 @@ Server demos for the RypelCam, in one mutator. It records demos on the server an
 1. Recording
 2. Watching a demo
 3. The viewer's keys and commands
-4. Commands for admins
+4. Recording commands
 5. Settings
 6. Works with the other mutators
 7. What has been checked
@@ -15,7 +15,7 @@ Server demos for the RypelCam, in one mutator. It records demos on the server an
 ## 1. Recording
 
 - **Every round:** with `bRecordRounds` on, the server starts recording a demo when a round starts and stops when it ends. Each demo is named after the map, the date and the time, for example `DR_VNTE-Hue_2026-10-26_19-04-31`. Everyone is told when a recording starts and stops.
-- **By hand:** admins can start and stop a recording at any time (`demorec`, `demostop`). A recording started by hand isn't stopped by the end of a round.
+- **By hand:** anyone can start and stop a recording at any time (`demorec`, `demostop`), or only admins with `bAdminOnlyCommands` on. A recording started by hand isn't stopped by the end of a round.
 - The demos are saved on the server, in its `Demos` folder. Play one back in the game with `demoplay <name>` in the console. To play a demo, your game needs the same version of every mod the server had when it was recorded.
 
 ## 2. Watching a demo
@@ -59,9 +59,9 @@ A line at the bottom left shows the demo's time, speed, and what is on. It isn't
 
 The keys can be changed in `MutDemoRec_Client.ini` (in your game's `Config` folder), under `[MutDemoRec.DRViewerInput]`: `CinematicKey`, `PauseKey`, `SlowerKey`, `FasterKey`, `NormalSpeedKey`, `RewindKey`, `SkipKey`, `SmoothKey`, `PathAddKey`, `PathPlayKey`, `PathClearKey`, `HelpKey`, and `SkipSeconds` for how far the rewind and skip keys go. The same file keeps the smooth camera, the camera path and a rewind under way.
 
-## 4. Commands for admins
+## 4. Recording commands
 
-Admins only (logged in as admin, or the host of a listen server).
+Anyone can use these. With `bAdminOnlyCommands` on, only admins can (logged in as admin, or the host of a listen server).
 
 | Command | What it does |
 | :--- | :--- |
@@ -77,6 +77,7 @@ Set in WebAdmin under **Mutators > MutDemoRec Settings**, or in `MutDemoRec_Serv
 | Setting | What it does |
 | :--- | :--- |
 | `bRecordRounds` | Record a demo of every round (off unless turned on) |
+| `bAdminOnlyCommands` | Only admins can use `demorec`, `demostop` and `demostatus` (off: anyone can) |
 | `bDisableDemoGunfire` | Leave the gunfire out of demos. On the page: "Put the gunfire into demos", which is On unless this is set |
 | `bDisableDemoViewer` | No spectator camera when a demo is played back (and so none of its controls). On the page: "Spectator camera when a demo is played back", On unless this is set |
 | `bDisableDemoAmbient` | Don't start the map's ambient sound when a demo is played back. On the page: "Start the map's ambient sound...", On unless this is set |
@@ -100,3 +101,4 @@ The test harness recorded demos on a listen server with a rifle firing, played t
 - By someone watching. How the camera keys feel and how things look on screen can't be checked by the tests.
 - Together with the RypelCam.
 - With a demo recorded on a dedicated server. Demos from the test dedicated server don't play back properly on the test PC, which is a separate problem.
+- `bAdminOnlyCommands` turning away someone who isn't an admin. The test for it needs a player who isn't an admin, and in the single player test game everyone is.

@@ -1,5 +1,6 @@
 // Demo recording for the RypelCam, in one mutator that needs no other.
-//  - Records a demo of every round (bRecordRounds), or when an admin asks (demorec, demostop, demostatus).
+//  - Records a demo of every round (bRecordRounds), or when someone asks (demorec, demostop, demostatus: anyone, or
+//    only admins with bAdminOnlyCommands).
 //  - While any demo records, a DRDemoLink goes into it (and only into it). It puts the gunfire into the demo, and when
 //    the demo is played back it gives the viewer a spectator camera like the game's own (DRDemoViewer: cinematic mode,
 //    speed, pause, rewind, a smooth camera and camera paths), which also lets the sounds the playback makes itself be
@@ -8,6 +9,7 @@ class MutDemoRec extends ROMutator
     config(MutDemoRec_Server);
 
 var config bool     bRecordRounds;          // Record a demo of every round, from its start to its end
+var config bool     bAdminOnlyCommands;     // Only admins can use demorec, demostop and demostatus (off: anyone)
 var config bool     bDisableDemoGunfire;    // Leave the gunfire out of demos (stored as the negative: on by default)
 var config bool     bDisableDemoViewer;     // No spectator camera when a demo is played back (on by default)
 var config bool     bDisableDemoAmbient;    // Don't start the map's ambient sound when a demo is played back (on by default)
@@ -208,9 +210,9 @@ function Mutate(string MutateString, PlayerController PC)
 
     if (Command == "DEMOREC" || Command == "DEMOSTOP" || Command == "DEMOSTATUS")
     {
-        if (!IsAdmin(PC))
+        if (bAdminOnlyCommands && !IsAdmin(PC))
         {
-            PC.ClientMessage("[Demo] Only an admin can do that");
+            PC.ClientMessage("[Demo] Only an admin can do that on this server");
         }
         else if (Command == "DEMOREC")
         {

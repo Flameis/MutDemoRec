@@ -27,8 +27,10 @@ When the server records a demo, MutDemoRec puts a small link into it. Only the d
 - **Sounds the playback makes itself:** explosions, artillery, bullet impacts and other sounds the game plays on your own computer are heard. Without the spectator camera they aren't: the game gives a demo's viewer no proper player controller to hear them through.
 - **Ambient sound:** the map's background sound (wind, birds, distant noise) is started a moment into the demo.
 - **MutCMenu's spectator view:** with MutCMenu on the server, its spectator view comes with the demo too: every player on the map, the triangles over players, tracers and the rest.
+- **Real speed:** the demo plays at the speed it happened. Without this, demos play several times too fast: the game shows one recorded moment of a demo for every frame your PC draws, and a demo only has one moment for each server update (20 a second on the 29th's servers). A PC drawing 125 frames a second played them about 6 times too fast. MutDemoRec holds each moment back until it is due, and keeps the animations in step. Players and effects move in steps of those recorded moments, but the camera stays as smooth as your frame rate (see "The server's update rate and demos" in section 5).
+- **Sprinting:** players who sprint are shown sprinting. The game never puts sprinting into a demo, so on playback sprinting players were shown running.
 - **Cinematic mode:** everything on screen off (the game's HUD, MutCMenu's view and the demo's own line of text), for filming.
-- **Speed and pause:** slower, faster or paused. The camera keeps moving at its own speed whatever the demo does, so you can look around a paused moment.
+- **Speed and pause:** slower, faster or paused. The camera keeps moving at its own speed whatever the demo does, so you can look around a paused moment. The fastest a demo can go is one recorded moment per frame your PC draws (about 6 times on a 20-update server at 125 frames a second).
 - **Skip and rewind:** forward or back 10 seconds, or straight to a time. Going back starts the demo again and goes quickly to the time (the screen is dark meanwhile); the speed, cinematic mode, smooth camera and camera path carry over. Only demos recorded by MutDemoRec can be rewound (it needs the demo's name).
 - **Smooth camera:** the view eases after where the camera is, so moving the camera and switching players become smooth swoops instead of jumps.
 - **Camera paths:** set points where the camera is, then fly a smooth curve through them, as slowly or quickly as you like. At the end you are left in free roam where the path ended. The points are kept until you clear them.
@@ -47,7 +49,7 @@ A line at the bottom left shows the demo's time, speed, and what is on. It isn't
 | H | `democinematic` | Cinematic mode on or off |
 | P | `demopause` | Pause or carry on |
 | [ and ] | `demoslower`, `demofaster` | Slower or faster (0.1, 0.25, 0.5, 1, 2, 4, 8 times) |
-| \ | `demospeed 1` | Normal speed. `demospeed 0.3` sets any speed from 0.1 to 16 |
+| \ | `demospeed 1` | Normal (real) speed. `demospeed 0.3` sets any speed from 0.1 to 8 |
 | Left and Right arrows | `demoskip -10`, `demoskip 10` | Back or forward 10 seconds |
 | | `demoseek 2:30` | Go to 2 minutes 30 into the demo (or `demoseek 150`) |
 | O | `demosmooth` | Smooth camera on or off. `demosmooth 5` turns it on and sets how quickly it catches up (higher is quicker; 3 if never set) |
@@ -82,6 +84,17 @@ Set in WebAdmin under **Mutators > MutDemoRec Settings**, or in `MutDemoRec_Serv
 | `bDisableDemoViewer` | No spectator camera when a demo is played back (and so none of its controls). On the page: "Spectator camera when a demo is played back", On unless this is set |
 | `bDisableDemoAmbient` | Don't start the map's ambient sound when a demo is played back. On the page: "Start the map's ambient sound...", On unless this is set |
 
+### The server's update rate and demos
+
+A demo records one moment each time the server updates the game, and never more than its own limit. Both are set in the server's `ROEngine.ini`, not by MutDemoRec:
+
+| Section | Setting | 29th servers | What it does |
+| :--- | :--- | :--- | :--- |
+| `[IpDrv.TcpNetDriver]` | `NetServerMaxTickRate` | 20 | How many times a second the server updates the game (`LanServerMaxTickRate`: on a LAN) |
+| `[Engine.DemoRecDriver]` | `NetServerMaxTickRate` | 30 | The most moments a second a demo records |
+
+At 20 updates a second, players in a demo move in 20 steps a second. A higher update rate makes demos smoother (the demo limit has to be raised with it, to 60 for a 60-update server). It also makes the server do more work and send more to every player, so it is a decision for the server, not something MutDemoRec changes. The playback speed is right either way.
+
 ## 6. Works with the other mutators
 
 - **MutCMenu:** gives the demo camera its spectator view, so it is in the demo.
@@ -95,10 +108,14 @@ The test harness recorded demos on a listen server with a rifle firing, played t
 - The demo was watched through the spectator camera.
 - A sound played the way explosions and artillery are played was heard.
 - MutCMenu's spectator view was on.
+- Normal speed played the demo at the real speed (it had played 4 times too fast), half speed at half, and the animations' clock kept in step.
+- A player marked sprinting in the demo was shown sprinting, and back.
 - Speed, pause, cinematic mode, the camera path, the smooth camera, skipping forward and rewinding each worked.
 
 *Not yet checked:*
 - By someone watching. How the camera keys feel and how things look on screen can't be checked by the tests.
+- How the sound plays while the demo is held back between moments. The real speed uses the game's pause, and whether that makes sounds choppy can only be heard.
+- A real player sprinting in a demo (the test marks its player as sprinting; it can't make it run).
+- `bAdminOnlyCommands` turning away someone who isn't an admin. The test for it needs a player who isn't an admin, and in the single player test game everyone is.
 - Together with the RypelCam.
 - With a demo recorded on a dedicated server. Demos from the test dedicated server don't play back properly on the test PC, which is a separate problem.
-- `bAdminOnlyCommands` turning away someone who isn't an admin. The test for it needs a player who isn't an admin, and in the single player test game everyone is.

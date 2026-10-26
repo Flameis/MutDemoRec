@@ -10,7 +10,12 @@
 // watching and filming (the keys are DRViewerInput's; each is also a console command):
 //  - Cinematic mode: the game's HUD, MutCMenu's view and this camera's own text all off (democinematic).
 //  - Speed: slower, faster, normal, pause (demospeed, demoslower, demofaster, demopause). The camera keeps moving at
-//    its own speed, also while paused.
+//    its own speed, also while paused. "Normal" is the real speed. The game reads one recorded moment of a demo for
+//    every frame it draws, whatever its demo speed (DemoPlayTimeDilation only sets the game's clock), and a demo has
+//    a moment for each server update (20 a second on the 29th's servers, 30 at most): played on a PC drawing 125
+//    frames a second, it went 4 to 6 times too fast. So each frame the demo is held (the game's pause) until its next
+//    moment is due on the real clock, by the server's clock in it (DRDemoLink.ServerTime); and the game's clock, which
+//    the animations go by, is set to keep up with the server's (UpdatePacing, UpdateClock).
 //  - Skip forward and rewind (demoskip, demoseek). Rewinding starts the demo again and goes quickly to the time (the
 //    engine's own demo rewind is switched off in RS2). What carries over the restart is kept in MutDemoRec_Client.ini.
 //  - Smooth camera: the view eases after where it should be, so moves and switching players are smooth (demosmooth).
@@ -22,6 +27,7 @@ class DRDemoViewer extends DemoRecSpectator
 
 var PlayerController    PlaybackController;     // The controller the playback gave the player (kept: it may need it)
 var string              DemoName;               // The demo being watched, when MutDemoRec recorded it (for rewinding)
+var DRDemoLink          Link;                   // What MutDemoRec put into the demo
 var DRViewerInput       ViewerInput;
 
 // ---- Watching and filming
@@ -40,6 +46,14 @@ var bool                bPathPlaying;
 var float               PathStart;
 var vector              PathLoc;
 var rotator             PathRot;
+// Playing at the real speed (UpdatePacing, UpdateClock)
+var bool                bPaceSet;
+var float               PaceServer, PaceReal;   // The server's clock in the demo at a real time: the pace from there
+var bool                bHeld;                  // Held back this frame (its next moment isn't due yet)
+var float               TimeScale;              // How fast the game's clock goes, so it keeps up with the demo's
+var bool                bClockSampled, bClockSet;
+var float               ClockServer, ClockWorld, ClockReal;
+var float               LastRealTime, RealStep; // Real seconds this frame
 
 var config bool         bSmoothCamera;          // Ease the view (remembered)
 var config float        SmoothSpeed;            // How quickly the smooth camera catches up (higher: quicker; 0: 3)
@@ -52,8 +66,8 @@ var config float        ResumeTime;
 var config float        ResumeSpeed;
 var config bool         bResumeCinematic;
 
-const SEEK_SPEED = 16.0;
-const MIN_SPEED = 0.1; // the slowest the game plays a demo
+const MIN_SPEED = 0.1;
+const MAX_SPEED = 8.0; // (as fast as one moment a frame goes, at most)
 
 // Called on the playback by DRDemoLink. Returns true once the local player has a viewer (made now, or already)
 static function bool TakeOverLocalPlayer(Actor Maker)
@@ -76,8 +90,9 @@ static function bool TakeOverLocalPlayer(Actor Maker)
     Viewer = Maker.Spawn(default.Class,,, Old.Location, Old.Rotation);
     if (Viewer == None)
         return false;
-    if (DRDemoLink(Maker) != None)
-        Viewer.DemoName = DRDemoLink(Maker).DemoName;
+    Viewer.Link = DRDemoLink(Maker);
+    if (Viewer.Link != None)
+        Viewer.DemoName = Viewer.Link.DemoName;
     Viewer.TakeOver(LP, Old);
     return true;
 }
@@ -131,6 +146,7 @@ function TakeOver(LocalPlayer LP, PlayerController Old)
     Interactions[0] = ViewerInput;
 
     Speed = 1.0;
+    TimeScale = 1.0;
     ResumeRewind();
     `log("[MutDemoRec] demo playback: "$self$" is the viewer (was "$Old$"), demo "$((DemoName != "") ? DemoName : "(name not known)"));
 }
@@ -200,16 +216,89 @@ function Say(string Msg)
     ClientMessage("[Demo] "$Msg);
 }
 
-// The demo's own time: the playback's level time (it runs with the demo's speed and stops while paused)
+// The demo's own time: the server's clock in it, from when the recording began (else the playback's level time, which
+// runs with the demo but at the recorded speed). It stops while paused
 function float DemoTime()
 {
+    if (Link != None && Link.DemoSeconds() >= 0)
+        return Link.DemoSeconds();
     return WorldInfo.TimeSeconds;
 }
 
-// Real seconds for a tick, whatever speed the demo plays at, so the camera moves at its own speed
+// Every frame: the demo goes on to its next moment only once that is due at the chosen speed, by the server's clock in
+// it against the real clock (else it is held for this frame). A demo that can't keep up (faster than one moment a
+// frame) goes as fast as it can, without saving up the time. Skipping goes as fast as it can
+function UpdatePacing()
+{
+    local float S, R, Due;
+
+    if (Link == None || Link.ServerTime <= 0 || bPaused || bSeeking)
+    {
+        bPaceSet = false;
+        if (bHeld && !bPaused)
+            WorldInfo.Pauser = None;
+        bHeld = false;
+        return;
+    }
+    S = Link.ServerTime;
+    R = WorldInfo.RealTimeSeconds;
+    if (!bPaceSet || S < PaceServer)
+    {
+        bPaceSet = true;
+        PaceServer = S;
+        PaceReal = R;
+    }
+    Due = PaceServer + Speed * (R - PaceReal);
+    if (Due - S > 0.25)
+    {
+        PaceServer = S;
+        PaceReal = R;
+        Due = S;
+    }
+    bHeld = S > Due;
+    WorldInfo.Pauser = bHeld ? PlayerReplicationInfo : None;
+}
+
+// The game's clock (what the animations and effects go by) moves on only in the frames the demo does, by the frame's
+// time times DemoPlayTimeDilation: every second or so that is set so it went as far as the server's clock in the demo
+function UpdateClock()
+{
+    local float S, W, R, F;
+
+    if (Link == None || Link.ServerTime <= 0 || bPaused)
+    {
+        bClockSampled = false;
+        return;
+    }
+    S = Link.ServerTime;
+    W = WorldInfo.TimeSeconds;
+    R = WorldInfo.RealTimeSeconds;
+    if (!bClockSampled || S < ClockServer)
+    {
+        bClockSampled = true;
+        ClockServer = S;
+        ClockWorld = W;
+        ClockReal = R;
+        return;
+    }
+    if (R - ClockReal < 1.0 || W - ClockWorld < 0.05 || S - ClockServer < 0.05)
+        return;
+    F = (S - ClockServer) / (W - ClockWorld);
+    ClockServer = S;
+    ClockWorld = W;
+    ClockReal = R;
+    if (Abs(F - 1.0) < 0.03)
+        return;
+    // the first time all the way, then in steps (each second's measure is a little uneven)
+    TimeScale = FClamp(TimeScale * (bClockSet ? (F ** 0.6) : F), MIN_SPEED, 20.0);
+    bClockSet = true;
+    WorldInfo.DemoPlayTimeDilation = TimeScale;
+}
+
+// Real seconds for this frame, whatever the demo does, so the camera moves at its own speed
 function float RealDelta(float DeltaTime)
 {
-    return DeltaTime / FMax(WorldInfo.DemoPlayTimeDilation, MIN_SPEED);
+    return (RealStep > 0) ? RealStep : DeltaTime;
 }
 
 static function string TimeText(float T)
@@ -220,10 +309,13 @@ static function string TimeText(float T)
     return (Secs / 60)$":"$(((Secs % 60) < 10) ? "0" : "")$(Secs % 60);
 }
 
-// The demo's speed, and the game's pause (the demo stops; this camera keeps going, see PlayerTick)
+// The demo's speed, and pause (the game's pause: the demo stops; this camera keeps going, see PlayerTick). The pace
+// starts again from here (UpdatePacing)
 function ApplySpeed()
 {
-    WorldInfo.DemoPlayTimeDilation = bSeeking ? SEEK_SPEED : Speed;
+    WorldInfo.DemoPlayTimeDilation = TimeScale;
+    bPaceSet = false;
+    bHeld = false;
     if (bPaused && !bSeeking)
         WorldInfo.Pauser = PlayerReplicationInfo;
     else
@@ -270,7 +362,7 @@ function SetCinematic(bool bOn)
 // demospeed 0.5 (half), demospeed 2 (double); 1 is normal
 exec function DemoSpeed(float NewSpeed)
 {
-    Speed = FClamp(NewSpeed, MIN_SPEED, 16.0);
+    Speed = FClamp(NewSpeed, MIN_SPEED, MAX_SPEED);
     bPaused = false;
     ApplySpeed();
     Say("Speed "$Speed$"x");
@@ -593,10 +685,12 @@ auto state Spectating
     {
         local Pawn P;
 
+        RealStep = (LastRealTime > 0) ? FClamp(WorldInfo.RealTimeSeconds - LastRealTime, 0.0, 0.25) : 0.0;
+        LastRealTime = WorldInfo.RealTimeSeconds;
         Global.PlayerTick(DeltaTime);
-        // While the demo is paused the game still runs this, but doesn't update the camera: do it here
+        // While the demo is paused or held the game still runs this, but doesn't update the camera: do it here
         if (WorldInfo.Pauser != None && PlayerCamera != None)
-            PlayerCamera.UpdateCamera(DeltaTime);
+            PlayerCamera.UpdateCamera(RealStep);
 
         if (bSeeking && DemoTime() >= SeekTarget)
         {
@@ -606,6 +700,8 @@ auto state Spectating
         }
         if (bPathPlaying)
             UpdatePath();
+        UpdatePacing();
+        UpdateClock();
 
         if (RealViewTarget == None && MyRealViewTarget != None)
             RealViewTarget = MyRealViewTarget;

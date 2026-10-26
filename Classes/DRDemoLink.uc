@@ -13,6 +13,10 @@
 // - The viewer (bViewer): on playback the local player gets a DRDemoViewer, a spectator camera like the game's own.
 // - Ambient sound (bAmbient): on playback the map's ambient sound is started (the map's own start doesn't run then).
 // - The demo's name (DemoName), so the viewer can start the demo again to rewind it.
+// - The server's clock (ServerTime). The game plays a demo one recorded moment per frame drawn, so it goes as fast as
+//   the viewer's frame rate against the server's (several times too fast). The viewer paces it on this clock.
+// - Who is sprinting (Sprints). The game sends a player's sprinting only to the other players, and a demo counts as
+//   every player's own, so it never gets it: playback showed sprinting players running. It is set on playback here.
 class DRDemoLink extends Actor;
 
 struct DemoSound
@@ -27,13 +31,22 @@ struct DemoSound
 var repnotify DemoSound Sounds[16];
 var bool    bGunfire, bViewer, bAmbient;
 var string  DemoName;
+var float   ServerTime;         // The server's clock (sent with every update)
+var float   StartServerTime;    // The server's clock when this was made: demo time 0
+
+struct PawnSprint
+{
+    var Pawn    P;
+    var bool    bSprinting;
+};
+var PawnSprint Sprints[64];
 
 replication
 {
     if (bNetDirty)
-        Sounds;
+        Sounds, ServerTime, Sprints;
     if (bNetInitial)
-        bGunfire, bViewer, bAmbient, DemoName;
+        bGunfire, bViewer, bAmbient, DemoName, StartServerTime;
 }
 
 // ---- Server
@@ -56,18 +69,31 @@ var bool                bViewerDone, bAmbientDone;
 simulated event PostBeginPlay()
 {
     super.PostBeginPlay();
+    if (Role == ROLE_Authority)
+    {
+        StartServerTime = WorldInfo.TimeSeconds;
+        ServerTime = StartServerTime;
+    }
     if (WorldInfo.IsPlayingDemo())
         SetTimer(0.5, true, 'SetUpPlayback');
 }
 
-event Tick(float DeltaTime)
+simulated event Tick(float DeltaTime)
 {
     local Pawn P;
     local int i;
 
-    if (Role < ROLE_Authority || !bGunfire)
+    // Playback: who is sprinting
+    if (Role < ROLE_Authority)
+    {
+        ApplySprints();
         return;
+    }
 
+    ServerTime = WorldInfo.TimeSeconds;
+    WatchSprints();
+    if (!bGunfire)
+        return;
     for (i = Watched.Length - 1; i >= 0; i--)
     {
         if (Watched[i].P == None || Watched[i].P.bDeleteMe)
@@ -75,6 +101,63 @@ event Tick(float DeltaTime)
     }
     foreach WorldInfo.AllPawns(class'Pawn', P)
         WatchShots(P);
+}
+
+// ====================================================
+// Sprinting
+// ====================================================
+
+// Server: every pawn has a slot while it is there (64 at most), with whether it is sprinting
+function WatchSprints()
+{
+    local Pawn P;
+    local int i, Free;
+
+    for (i = 0; i < ArrayCount(Sprints); i++)
+    {
+        if (Sprints[i].P != None && Sprints[i].P.bDeleteMe)
+            Sprints[i].P = None;
+    }
+    foreach WorldInfo.AllPawns(class'Pawn', P)
+    {
+        Free = INDEX_NONE;
+        for (i = 0; i < ArrayCount(Sprints); i++)
+        {
+            if (Sprints[i].P == P)
+                break;
+            if (Free == INDEX_NONE && Sprints[i].P == None)
+                Free = i;
+        }
+        if (i == ArrayCount(Sprints))
+        {
+            if (Free == INDEX_NONE)
+                continue;
+            i = Free;
+            Sprints[i].P = P;
+        }
+        Sprints[i].bSprinting = P.bIsSprinting;
+    }
+}
+
+// Playback: as the game does for another player when their sprinting changes (ROPawn.ReplicatedEvent)
+simulated function ApplySprints()
+{
+    local int i;
+
+    for (i = 0; i < ArrayCount(Sprints); i++)
+    {
+        if (Sprints[i].P == None || Sprints[i].P.bIsSprinting == Sprints[i].bSprinting)
+            continue;
+        Sprints[i].P.bIsSprinting = Sprints[i].bSprinting;
+        if (Sprints[i].bSprinting && ROPawn(Sprints[i].P) != None)
+            ROPawn(Sprints[i].P).CleanupActiveAnimation();
+    }
+}
+
+// The demo's own time in seconds from when the link was made (or -1 before the clock has come in)
+simulated function float DemoSeconds()
+{
+    return (ServerTime > 0) ? ServerTime - StartServerTime : -1.0;
 }
 
 // ====================================================

@@ -1,11 +1,9 @@
-// Demo recording for the RypelCam, on its own: everything the 29th's mutators do for server demos, in one mutator that
-// needs no other. (Realism Match records demos and MutExtras puts the gunfire into them; this does both, and more.)
+// Demo recording for the RypelCam, in one mutator that needs no other.
 //  - Records a demo of every round (bRecordRounds), or when an admin asks (demorec, demostop, demostatus).
 //  - While any demo records, a DRDemoLink goes into it (and only into it). It puts the gunfire into the demo, and when
-//    the demo is played back it gives the viewer a spectator camera like the game's own (DRDemoViewer), which also
-//    lets the sounds the playback makes itself be heard (explosions, artillery), and starts the map's ambient sound.
-// With Realism Match on the server, its demo commands are used (it answers them first), and with this on the server
-// MutExtras leaves the gunfire to this.
+//    the demo is played back it gives the viewer a spectator camera like the game's own (DRDemoViewer: cinematic mode,
+//    speed, pause, rewind, a smooth camera and camera paths), which also lets the sounds the playback makes itself be
+//    heard (explosions, artillery), and starts the map's ambient sound.
 class MutDemoRec extends ROMutator
     config(MutDemoRec_Server);
 
@@ -18,26 +16,12 @@ var DRDemoLink      DemoLink;       // While a demo records
 var bool            bAutoStarted;   // The recording running now was started by the round starting
 var string          DemoName;       // Name of the recording this started ("" if it was started some other way)
 var bool            bRoundWasActive;
-var bool            bRealismMatch;  // Realism Match is on the server: its demo commands are used
 
 function PostBeginPlay()
 {
     super.PostBeginPlay();
-    bRealismMatch = HasMutator('MutRealismMatch');
     SetTimer(0.25, true, 'CheckDemo');
-    `log("[MutDemoRec] active"$(bRealismMatch ? " (Realism Match is on: its demo commands are used)" : ""));
-}
-
-function bool HasMutator(name MutatorClassName)
-{
-    local Mutator M;
-
-    for (M = WorldInfo.Game.BaseMutator; M != None; M = M.NextMutator)
-    {
-        if (M.IsA(MutatorClassName))
-            return true;
-    }
-    return false;
+    `log("[MutDemoRec] active");
 }
 
 // ====================================================
@@ -96,6 +80,7 @@ function CheckDemo()
         DemoLink.bGunfire = !bDisableDemoGunfire;
         DemoLink.bViewer = !bDisableDemoViewer;
         DemoLink.bAmbient = !bDisableDemoAmbient;
+        DemoLink.DemoName = DemoName; // so the viewer can start it again to rewind ("" if it was started some other way)
     }
     `log("[MutDemoRec] demo recording: link "$DemoLink$" for "$DemoCam);
 }
@@ -221,8 +206,7 @@ function Mutate(string MutateString, PlayerController PC)
     if (Args.Length > 0)
         Command = Caps(Args[0]);
 
-    // With Realism Match, its demo commands answer these
-    if (!bRealismMatch && (Command == "DEMOREC" || Command == "DEMOSTOP" || Command == "DEMOSTATUS"))
+    if (Command == "DEMOREC" || Command == "DEMOSTOP" || Command == "DEMOSTATUS")
     {
         if (!IsAdmin(PC))
         {

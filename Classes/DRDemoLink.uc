@@ -11,7 +11,8 @@
 //   the way the game plays a gunshot for a player. Every single shot, and the tail when a burst of automatic fire
 //   ends (the sound of automatic fire itself is part of the pawn, so it is already in demos).
 // - The viewer (bViewer): on playback the local player gets a DRDemoViewer, a spectator camera like the game's own.
-// - Ambient sound (bAmbient): on playback the map's ambient sound is started, as MutExtras' late-join fix does.
+// - Ambient sound (bAmbient): on playback the map's ambient sound is started (the map's own start doesn't run then).
+// - The demo's name (DemoName), so the viewer can start the demo again to rewind it.
 class DRDemoLink extends Actor;
 
 struct DemoSound
@@ -25,13 +26,14 @@ struct DemoSound
 // The newest sounds, in turn. A slot is only reused 16 sounds later, by then long sent.
 var repnotify DemoSound Sounds[16];
 var bool    bGunfire, bViewer, bAmbient;
+var string  DemoName;
 
 replication
 {
     if (bNetDirty)
         Sounds;
     if (bNetInitial)
-        bGunfire, bViewer, bAmbient;
+        bGunfire, bViewer, bAmbient, DemoName;
 }
 
 // ---- Server
@@ -190,7 +192,9 @@ simulated event ReplicatedEvent(name VarName)
         if (Sounds[i].Seq != 0 && Sounds[i].Seq != PlayedSeq[i])
         {
             PlayedSeq[i] = Sounds[i].Seq;
-            PlayDemoSound(Sounds[i].Sound, Sounds[i].Source, Sounds[i].Location);
+            // (not while the viewer skips through the demo to a point: hundreds of shots at once)
+            if (DRDemoViewer(GetALocalPlayerController()) == None || !DRDemoViewer(GetALocalPlayerController()).bSeeking)
+                PlayDemoSound(Sounds[i].Sound, Sounds[i].Source, Sounds[i].Location);
         }
     }
 }
@@ -260,7 +264,7 @@ simulated function SetUpPlayback()
 }
 
 // Fires the "Start All" input of the map's AkStartAmbientSound Kismet node(s), "Stop All" first so a map that did start
-// its ambience doesn't play it twice (as MutExtras' ambient sound fix does for players who join late)
+// its ambience doesn't play it twice
 simulated function StartAmbientSound()
 {
     local Sequence GameSeq;

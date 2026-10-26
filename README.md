@@ -1,47 +1,67 @@
 # MutDemoRec
 
-Demo recording for the RypelCam, as one mutator that needs no other. It records server demos, and makes them better to watch: the gunfire is in them, the sounds the game makes during playback are heard, and the person watching gets a spectator camera like the game's own.
-
-The same things are also in MutRealismMatch (recording) and MutExtras (gunfire, spectator camera, ambient sound), so you can try both ways and keep the one you like. Use one or the other: with MutDemoRec on the server, MutExtras leaves the demo work to it.
+Server demos for the RypelCam, in one mutator. It records demos on the server and makes them good to watch and film: the gunfire is in them, the sounds the game makes during playback are heard, and the person watching gets a spectator camera with a cinematic mode, speed control, pause, rewind, a smooth camera and camera paths.
 
 ## Contents
 
-1. What it does
-2. Commands
-3. Settings
-4. Works with the other mutators
-5. What has been checked
+1. Recording
+2. Watching a demo
+3. The viewer's keys and commands
+4. Commands for admins
+5. Settings
+6. Works with the other mutators
+7. What has been checked
 
-## 1. What it does
+## 1. Recording
 
-**Recording**
 - **Every round:** with `bRecordRounds` on, the server starts recording a demo when a round starts and stops when it ends. Each demo is named after the map, the date and the time, for example `DR_VNTE-Hue_2026-10-26_19-04-31`. Everyone is told when a recording starts and stops.
 - **By hand:** admins can start and stop a recording at any time (`demorec`, `demostop`). A recording started by hand isn't stopped by the end of a round.
 - The demos are saved on the server, in its `Demos` folder. Play one back in the game with `demoplay <name>` in the console. To play a demo, your game needs the same version of every mod the server had when it was recorded.
 
-**Watching a demo**
+## 2. Watching a demo
 
 When the server records a demo, MutDemoRec puts a small link into it. Only the demo gets it, so it adds nothing to what players on the server receive. When the demo is played back:
 
-- **Gunfire:** every gunshot is heard where it was fired, and the sound at the end of a burst of automatic fire. Without this a played-back demo has no gunshots at all: the game sends them to a hidden camera the demo is recorded from, and the game doesn't bring that camera back when a demo plays.
-- **Spectator camera:** you watch through a spectator camera that works like the game's own spectator:
-
-  | Key | What it does |
-  | :--- | :--- |
-  | Fire | Next player |
-  | Alt fire | Previous player |
-  | Iron sights | Next camera mode: free camera around the player, third person, first person, the map's cameras, free roam |
-  | Quick grenade | Free roam |
-  | Mouse wheel | Free roam camera speed |
-
-  It starts on the first player it finds, in third person. *Not yet tried with the RypelCam installed.*
+- **Gunfire:** every gunshot is heard where it was fired, and the sound at the end of a burst of automatic fire. Without this a played-back demo has no gunshots at all: the game sends them to a hidden camera the demo is recorded from, and doesn't bring that camera back when a demo plays.
+- **A spectator camera:** you watch through a camera that works like the game's own spectator (fire and alt fire for the next and previous player, iron sights for the camera mode, and so on; see the keys below). It starts on the first player it finds, in third person.
 - **Sounds the playback makes itself:** explosions, artillery, bullet impacts and other sounds the game plays on your own computer are heard. Without the spectator camera they aren't: the game gives a demo's viewer no proper player controller to hear them through.
 - **Ambient sound:** the map's background sound (wind, birds, distant noise) is started a moment into the demo.
-- **MutCMenu's spectator view:** with MutCMenu on the server, its spectator view comes with the demo too: every player on the map, the triangles over players, tracers and the rest (see the MutCMenu README).
+- **MutCMenu's spectator view:** with MutCMenu on the server, its spectator view comes with the demo too: every player on the map, the triangles over players, tracers and the rest.
+- **Cinematic mode:** everything on screen off (the game's HUD, MutCMenu's view and the demo's own line of text), for filming.
+- **Speed and pause:** slower, faster or paused. The camera keeps moving at its own speed whatever the demo does, so you can look around a paused moment.
+- **Skip and rewind:** forward or back 10 seconds, or straight to a time. Going back starts the demo again and goes quickly to the time (the screen is dark meanwhile); the speed, cinematic mode, smooth camera and camera path carry over. Only demos recorded by MutDemoRec can be rewound (it needs the demo's name).
+- **Smooth camera:** the view eases after where the camera is, so moving the camera and switching players become smooth swoops instead of jumps.
+- **Camera paths:** set points where the camera is, then fly a smooth curve through them, as slowly or quickly as you like. At the end you are left in free roam where the path ended. The points are kept until you clear them.
 
-## 2. Commands
+A line at the bottom left shows the demo's time, speed, and what is on. It isn't shown in cinematic mode.
 
-Admins only (logged in as admin, or the host of a listen server). With MutRealismMatch on the server, use its demo commands instead: they are the same, and MutDemoRec leaves them to it.
+## 3. The viewer's keys and commands
+
+| Key | Console command | What it does |
+| :--- | :--- | :--- |
+| Fire | | Next player |
+| Alt fire | | Previous player |
+| Iron sights | | Next camera mode: free camera around the player, third person, first person, the map's cameras, free roam |
+| Quick grenade | | Free roam |
+| Mouse wheel | | Free roam camera speed |
+| H | `democinematic` | Cinematic mode on or off |
+| P | `demopause` | Pause or carry on |
+| [ and ] | `demoslower`, `demofaster` | Slower or faster (0.1, 0.25, 0.5, 1, 2, 4, 8 times) |
+| \ | `demospeed 1` | Normal speed. `demospeed 0.3` sets any speed from 0.1 to 16 |
+| Left and Right arrows | `demoskip -10`, `demoskip 10` | Back or forward 10 seconds |
+| | `demoseek 2:30` | Go to 2 minutes 30 into the demo (or `demoseek 150`) |
+| O | `demosmooth` | Smooth camera on or off. `demosmooth 5` turns it on and sets how quickly it catches up (higher is quicker; 3 if never set) |
+| K | `demopathadd` | Add a camera path point where the camera is |
+| L | `demopathplay` | Fly the camera path (again to stop) |
+| J | `demopathclear` | Clear the camera path |
+| | `demopathtime 2` | Seconds from one path point to the next (3 if never set) |
+| F1 | | Show or hide the list of keys |
+
+The keys can be changed in `MutDemoRec_Client.ini` (in your game's `Config` folder), under `[MutDemoRec.DRViewerInput]`: `CinematicKey`, `PauseKey`, `SlowerKey`, `FasterKey`, `NormalSpeedKey`, `RewindKey`, `SkipKey`, `SmoothKey`, `PathAddKey`, `PathPlayKey`, `PathClearKey`, `HelpKey`, and `SkipSeconds` for how far the rewind and skip keys go. The same file keeps the smooth camera, the camera path and a rewind under way.
+
+## 4. Commands for admins
+
+Admins only (logged in as admin, or the host of a listen server).
 
 | Command | What it does |
 | :--- | :--- |
@@ -50,7 +70,7 @@ Admins only (logged in as admin, or the host of a listen server). With MutRealis
 | `mutate demostop` | Stops the recording |
 | `mutate demostatus` | Says whether a demo is being recorded, and how many gunshots have been put into it |
 
-## 3. Settings
+## 5. Settings
 
 Set in WebAdmin under **Mutators > MutDemoRec Settings**, or in `MutDemoRec_Server.ini`. The page has two tabs, **Recording** and **Playback**. The labels come from `Localization\INT\MutDemoRec.int`, which a server needs next to the mod.
 
@@ -58,16 +78,15 @@ Set in WebAdmin under **Mutators > MutDemoRec Settings**, or in `MutDemoRec_Serv
 | :--- | :--- |
 | `bRecordRounds` | Record a demo of every round (off unless turned on) |
 | `bDisableDemoGunfire` | Leave the gunfire out of demos. On the page: "Put the gunfire into demos", which is On unless this is set |
-| `bDisableDemoViewer` | No spectator camera when a demo is played back. On the page: "Spectator camera when a demo is played back", On unless this is set |
+| `bDisableDemoViewer` | No spectator camera when a demo is played back (and so none of its controls). On the page: "Spectator camera when a demo is played back", On unless this is set |
 | `bDisableDemoAmbient` | Don't start the map's ambient sound when a demo is played back. On the page: "Start the map's ambient sound...", On unless this is set |
 
-## 4. Works with the other mutators
+## 6. Works with the other mutators
 
-- **MutRealismMatch:** keeps its own recording (`bRecordDemos` records every LIVE round) and its demo commands. Turn on only one of `bRecordRounds` and `bRecordDemos`; if both are on, whichever starts first records.
-- **MutExtras:** has the same gunfire, spectator camera and ambient sound settings. With MutDemoRec on the server it leaves all of that to MutDemoRec.
-- **MutCMenu:** gives the demo camera its spectator view, whichever of MutDemoRec or MutExtras does the demo work.
+- **MutCMenu:** gives the demo camera its spectator view, so it is in the demo.
+- **MutRealismMatch:** its respawn, round restart and weapon safety commands leave the demo camera alone, so they don't reset it inside the demo.
 
-## 5. What has been checked
+## 7. What has been checked
 
 The test harness recorded demos on a listen server with a rifle firing, played them back in the game and checked them:
 - Each shot was heard once.
@@ -75,8 +94,9 @@ The test harness recorded demos on a listen server with a rifle firing, played t
 - The demo was watched through the spectator camera.
 - A sound played the way explosions and artillery are played was heard.
 - MutCMenu's spectator view was on.
+- Speed, pause, cinematic mode, the camera path, the smooth camera, skipping forward and rewinding each worked.
 
 *Not yet checked:*
-- By someone watching. How the camera keys feel and how CMenu's view looks on screen can't be checked by the tests.
+- By someone watching. How the camera keys feel and how things look on screen can't be checked by the tests.
 - Together with the RypelCam.
 - With a demo recorded on a dedicated server. Demos from the test dedicated server don't play back properly on the test PC, which is a separate problem.

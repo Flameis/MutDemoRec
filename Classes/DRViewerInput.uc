@@ -8,7 +8,7 @@ var DRDemoViewer    Viewer;
 var bool            bShowHelp;
 
 var config name     CinematicKey, PauseKey, SlowerKey, FasterKey, NormalSpeedKey, RewindKey, SkipKey;
-var config name     SmoothKey, PathAddKey, PathPlayKey, PathClearKey, HelpKey;
+var config name     SmoothKey, PathAddKey, PathPlayKey, PathClearKey, HelpKey, PacingKey;
 var config float    SkipSeconds;    // How far the rewind and skip keys go (0: 10 seconds)
 
 function name KeyOr(name Configured, name Fallback)
@@ -61,6 +61,9 @@ function bool InputKey(int ControllerId, name Key, EInputEvent Event, optional f
     case KeyOr(PathClearKey, 'J'):
         Viewer.DemoPathClear();
         return true;
+    case KeyOr(PacingKey, 'U'):
+        Viewer.DemoPacing();
+        return true;
     case KeyOr(HelpKey, 'F1'):
         bShowHelp = !bShowHelp;
         return true;
@@ -103,6 +106,8 @@ event PostRender(Canvas C)
         S $= "  paused";
     else if (Viewer.Speed != 1.0)
         S $= "  speed "$Viewer.Speed$"x";
+    if (Viewer.bLimitFrameRate)
+        S $= "  frame rate limited";
     if (Viewer.bSmoothCamera)
         S $= "  smooth camera";
     if (Viewer.bPathPlaying)
@@ -117,7 +122,8 @@ event PostRender(Canvas C)
         Lines.AddItem(KeyOr(CinematicKey, 'H')$": cinematic mode (everything on screen off)   "$KeyOr(PauseKey, 'P')$": pause");
         Lines.AddItem(KeyOr(SlowerKey, 'LeftBracket')$" / "$KeyOr(FasterKey, 'RightBracket')$": slower / faster   "
             $KeyOr(NormalSpeedKey, 'Backslash')$": normal speed");
-        Lines.AddItem(KeyOr(RewindKey, 'Left')$" / "$KeyOr(SkipKey, 'Right')$": back / forward "$int(SkipBy())$" seconds   console: demoseek 2:30");
+        Lines.AddItem(KeyOr(RewindKey, 'Left')$" / "$KeyOr(SkipKey, 'Right')$": back / forward "$int(SkipBy())$" seconds   console: demoseek 2:30   "
+            $KeyOr(PacingKey, 'U')$": hold the demo / limit the frame rate");
         Lines.AddItem(KeyOr(SmoothKey, 'O')$": smooth camera   "$KeyOr(PathAddKey, 'K')$": camera path point here   "
             $KeyOr(PathPlayKey, 'L')$": fly the path   "$KeyOr(PathClearKey, 'J')$": clear the path");
         Lines.AddItem("Fire / alt fire: next / previous player   iron sights: camera mode   quick grenade: free roam   wheel: camera speed");

@@ -15,7 +15,9 @@
 //    a moment for each server update (20 a second on the 29th's servers, 30 at most): played on a PC drawing 125
 //    frames a second, it went 4 to 6 times too fast. So each frame the demo is held (the game's pause) until its next
 //    moment is due on the real clock, by the server's clock in it (DRDemoLink.ServerTime); and the game's clock, which
-//    the animations go by, is set to keep up with the server's (UpdatePacing, UpdateClock).
+//    the animations go by, is set to keep up with the server's (UpdatePacing, UpdateClock). Holding the demo pauses the
+//    game on most frames, which may make shadows flicker; the other way (demopacing, bLimitFrameRate) limits the frame
+//    rate to the demo's own moments a second instead (DRFrameLimiter), so the camera goes at that rate too.
 //  - Skip forward and rewind (demoskip, demoseek). Rewinding starts the demo again and goes quickly to the time (the
 //    engine's own demo rewind is switched off in RS2). What carries over the restart is kept in MutDemoRec_Client.ini.
 //  - Smooth camera: the view eases after where it should be, so moves and switching players are smooth (demosmooth).
@@ -54,10 +56,18 @@ var float               TimeScale;              // How fast the game's clock goe
 var bool                bClockSampled, bClockSet;
 var float               ClockServer, ClockWorld, ClockReal;
 var float               LastRealTime, RealStep; // Real seconds this frame
+// The frame rate way (bLimitFrameRate)
+var DRFrameLimiter      Limiter;
+var float               MomentsPerSecond;       // The demo's recorded moments per second of it (measured; 30 at first)
+var float               LimitScale;             // A correction to the limit, from how fast the demo really went
+var bool                bRateSampled;
+var int                 RateFrame;
+var float               RateServer, RateReal;
 
 var config bool         bSmoothCamera;          // Ease the view (remembered)
 var config float        SmoothSpeed;            // How quickly the smooth camera catches up (higher: quicker; 0: 3)
 var config float        PathPointSeconds;       // How long a camera path takes from one point to the next (0: 3)
+var config bool         bLimitFrameRate;        // Real speed by limiting the frame rate, not by holding the demo (remembered)
 var config array<vector>  PathPoints;           // The camera path (kept, so it is there again after a rewind)
 var config array<rotator> PathRotations;
 // A rewind under way: the demo is started again, then goes quickly to ResumeTime
@@ -65,6 +75,7 @@ var config string       ResumeDemo;
 var config float        ResumeTime;
 var config float        ResumeSpeed;
 var config bool         bResumeCinematic;
+var config float        ResumeTimeScale;        // and the game's clock speed it had found (UpdateClock)
 
 const MIN_SPEED = 0.1;
 const MAX_SPEED = 8.0; // (as fast as one moment a frame goes, at most)
@@ -232,7 +243,8 @@ function UpdatePacing()
 {
     local float S, R, Due;
 
-    if (Link == None || Link.ServerTime <= 0 || bPaused || bSeeking)
+    UpdateFrameLimit();
+    if (Link == None || Link.ServerTime <= 0 || bPaused || bSeeking || bLimitFrameRate)
     {
         bPaceSet = false;
         if (bHeld && !bPaused)
@@ -257,6 +269,65 @@ function UpdatePacing()
     }
     bHeld = S > Due;
     WorldInfo.Pauser = bHeld ? PlayerReplicationInfo : None;
+}
+
+// The frame rate way: the game draws (and so reads) only as many frames a second as the demo has moments at the chosen
+// speed. Every second or so the moments per second are measured, and the limit corrected by how fast the demo really
+// went. Not while paused or skipping (the camera goes at the game's own frame rate then)
+function UpdateFrameLimit()
+{
+    local float S, R, F;
+    local int Frame;
+
+    if (Limiter == None && LocalPlayer(Player) != None)
+        Limiter = class'DRFrameLimiter'.static.Get(LocalPlayer(Player));
+    if (Limiter == None)
+        return;
+    if (!bLimitFrameRate || bPaused || bSeeking || Link == None || Link.ServerTime <= 0)
+    {
+        Limiter.Release();
+        bRateSampled = false;
+        return;
+    }
+    if (MomentsPerSecond <= 0)
+        MomentsPerSecond = 30.0;
+    if (LimitScale <= 0)
+        LimitScale = 1.0;
+
+    WorldInfo.GetDemoFrameInfo(Frame);
+    S = Link.ServerTime;
+    R = WorldInfo.RealTimeSeconds;
+    if (!bRateSampled || S < RateServer)
+    {
+        bRateSampled = true;
+        RateFrame = Frame;
+        RateServer = S;
+        RateReal = R;
+    }
+    else if (R - RateReal >= 1.0 && S - RateServer >= 0.25)
+    {
+        MomentsPerSecond = FClamp((Frame - RateFrame) / (S - RateServer), 5.0, 120.0);
+        F = (S - RateServer) / (R - RateReal);
+        LimitScale = FClamp(LimitScale * ((Speed / FMax(F, 0.01)) ** 0.5), 0.5, 2.0);
+        RateFrame = Frame;
+        RateServer = S;
+        RateReal = R;
+    }
+    Limiter.Limit(FClamp(MomentsPerSecond * Speed * LimitScale, 2.0, 240.0));
+}
+
+// demopacing: the real speed by holding the demo between moments (the camera as smooth as the game's frame rate), or by
+// limiting the frame rate to the demo's moments (no pausing, but everything at that rate). Remembered
+exec function DemoPacing()
+{
+    bLimitFrameRate = !bLimitFrameRate;
+    default.bLimitFrameRate = bLimitFrameRate;
+    StaticSaveConfig();
+    LimitScale = 1.0;
+    bRateSampled = false;
+    ApplySpeed();
+    Say(bLimitFrameRate ? "Real speed by limiting the frame rate to the demo's (no pausing between moments)"
+        : "Real speed by holding the demo between moments (the camera at your frame rate)");
 }
 
 // The game's clock (what the animations and effects go by) moves on only in the frames the demo does, by the frame's
@@ -434,6 +505,7 @@ function SeekTo(float T)
         default.ResumeTime = T;
         default.ResumeSpeed = Speed;
         default.bResumeCinematic = bCinematic;
+        default.ResumeTimeScale = TimeScale;
         SaveViewerConfig();
         Say("Rewinding to "$TimeText(T));
         // The game won't start a demo while one plays: stop it, and a restarter on the viewport (which stays through
@@ -459,6 +531,11 @@ function ResumeRewind()
     if (default.ResumeDemo == "" || default.ResumeDemo != DemoName)
         return;
     Speed = (default.ResumeSpeed > 0) ? default.ResumeSpeed : 1.0;
+    if (default.ResumeTimeScale > 0)
+    {
+        TimeScale = default.ResumeTimeScale;
+        bClockSet = true;
+    }
     SetCinematic(default.bResumeCinematic);
     SeekTarget = default.ResumeTime;
     bSeeking = SeekTarget > DemoTime();

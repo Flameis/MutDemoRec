@@ -28,6 +28,7 @@ When the server records a demo, MutDemoRec puts a small link into it. Only the d
 - **Ambient sound:** the map's background sound (wind, birds, distant noise) is started a moment into the demo.
 - **MutCMenu's spectator view:** with MutCMenu on the server, its spectator view comes with the demo too: every player on the map, the triangles over players, tracers and the rest.
 - **Real speed:** the demo plays at the speed it happened. Without this, demos play several times too fast: the game shows one recorded moment of a demo for every frame your PC draws, and a demo only has one moment for each server update (20 a second on the 29th's servers). A PC drawing 125 frames a second played them about 6 times too fast. MutDemoRec holds each moment back until it is due, and keeps the animations in step. Players and effects move in steps of those recorded moments, but the camera stays as smooth as your frame rate (see "The server's update rate and demos" in section 5).
+  - **Two ways to keep the real speed** (U, or `demopacing`, switches; it is remembered): by default the demo is held back between moments with the game's pause, so the camera stays smooth. That pauses the game on most frames, which may make shadows flicker. The other way limits your frame rate to the demo's own moments a second instead (about 20 to 30): nothing is paused, but the camera moves at that rate too. Your own frame rate settings come back as soon as the demo stops. Which one stops the flicker is *not yet checked*.
 - **Sprinting:** players who sprint are shown sprinting. The game never puts sprinting into a demo, so on playback sprinting players were shown running.
 - **Cinematic mode:** everything on screen off (the game's HUD, MutCMenu's view and the demo's own line of text), for filming.
 - **Speed and pause:** slower, faster or paused. The camera keeps moving at its own speed whatever the demo does, so you can look around a paused moment. The fastest a demo can go is one recorded moment per frame your PC draws (about 6 times on a 20-update server at 125 frames a second).
@@ -57,9 +58,10 @@ A line at the bottom left shows the demo's time, speed, and what is on. It isn't
 | L | `demopathplay` | Fly the camera path (again to stop) |
 | J | `demopathclear` | Clear the camera path |
 | | `demopathtime 2` | Seconds from one path point to the next (3 if never set) |
+| U | `demopacing` | Switch how the real speed is kept: holding the demo between moments (smooth camera) or limiting the frame rate to the demo's (no pausing) |
 | F1 | | Show or hide the list of keys |
 
-The keys can be changed in `MutDemoRec_Client.ini` (in your game's `Config` folder), under `[MutDemoRec.DRViewerInput]`: `CinematicKey`, `PauseKey`, `SlowerKey`, `FasterKey`, `NormalSpeedKey`, `RewindKey`, `SkipKey`, `SmoothKey`, `PathAddKey`, `PathPlayKey`, `PathClearKey`, `HelpKey`, and `SkipSeconds` for how far the rewind and skip keys go. The same file keeps the smooth camera, the camera path and a rewind under way.
+The keys can be changed in `MutDemoRec_Client.ini` (in your game's `Config` folder), under `[MutDemoRec.DRViewerInput]`: `CinematicKey`, `PauseKey`, `SlowerKey`, `FasterKey`, `NormalSpeedKey`, `RewindKey`, `SkipKey`, `SmoothKey`, `PathAddKey`, `PathPlayKey`, `PathClearKey`, `PacingKey`, `HelpKey`, and `SkipSeconds` for how far the rewind and skip keys go. The same file keeps the smooth camera, the camera path and a rewind under way.
 
 ## 4. Recording commands
 
@@ -111,10 +113,12 @@ The test harness recorded demos on a listen server with a rifle firing, played t
 - Normal speed played the demo at the real speed (it had played 4 times too fast), half speed at half, and the animations' clock kept in step.
 - A player marked sprinting in the demo was shown sprinting, and back.
 - Speed, pause, cinematic mode, the camera path, the smooth camera, skipping forward and rewinding each worked.
+- The frame rate way kept the real speed without pausing, and the player's own frame rate settings came back after.
 
 *Not yet checked:*
 - By someone watching. How the camera keys feel and how things look on screen can't be checked by the tests.
 - How the sound plays while the demo is held back between moments. The real speed uses the game's pause, and whether that makes sounds choppy can only be heard.
+- Whether holding the demo makes shadows flicker, and whether the frame rate way stops it.
 - A real player sprinting in a demo (the test marks its player as sprinting; it can't make it run).
 - `bAdminOnlyCommands` turning away someone who isn't an admin. The test for it needs a player who isn't an admin, and in the single player test game everyone is.
 - Together with the RypelCam.

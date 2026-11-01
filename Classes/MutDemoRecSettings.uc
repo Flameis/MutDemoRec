@@ -58,8 +58,11 @@ function SaveMutSettings()
 // same order as below.
 defaultproperties
 {
-    SettingsGroups.Add((GroupID="Recording",pMin=100,pMax=110,lMin=0,lMax=0))
-    SettingsGroups.Add((GroupID="Playback",pMin=110,pMax=120,lMin=0,lMax=0))
+    // Tab ids are numbers: the game's WebAdmin checks a named tab against the admin's rights with a broken address on
+    // the Mutators page, so with multi-admin logins (the 29th's servers) every named tab was hidden. The titles come
+    // from the .int file.
+    SettingsGroups.Add((GroupID="0",pMin=100,pMax=110,lMin=0,lMax=0))
+    SettingsGroups.Add((GroupID="1",pMin=110,pMax=120,lMin=0,lMax=0))
 
     Properties.Add((PropertyId=100,Data=(Type=SDT_Int32,Value1=0)))
     PropertyMappings.Add((Id=100,Name="bRecordRounds",MappingType=PVMT_IdMapped,ValueMappings=((Id=0),(Id=1))))

@@ -70,7 +70,7 @@ Anyone can use these. With `bAdminOnlyCommands` on, only admins can (logged in a
 | Command | What it does |
 | :--- | :--- |
 | `mutate demorec` | Starts recording a demo, named after the map, date and time |
-| `mutate demorec [NAME]` | Starts recording under that name (letters, numbers, `-` and `_`; anything else becomes `_`). `--name` or `-n` before the name works too |
+| `mutate demorec [NAME]` | Starts recording under that name (letters, numbers, `-` and `_`; anything else becomes `_`). `--name` or `-n` before the name works too. Any other option gets a message saying it was ignored, and is left out of the name |
 | `mutate demostop` | Stops the recording |
 | `mutate demostatus` | Says whether a demo is being recorded, and how many gunshots have been put into it |
 

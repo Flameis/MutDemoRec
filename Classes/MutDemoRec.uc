@@ -210,6 +210,9 @@ function Mutate(string MutateString, PlayerController PC)
 
     if (Command == "DEMOREC" || Command == "DEMOSTOP" || Command == "DEMOSTATUS")
     {
+        if (PC != None && UnknownOptionsWarning(Args) != "")
+            PC.ClientMessage("[Demo] "$UnknownOptionsWarning(Args));
+
         if (bAdminOnlyCommands && !IsAdmin(PC))
         {
             PC.ClientMessage("[Demo] Only an admin can do that on this server");
@@ -219,7 +222,7 @@ function Mutate(string MutateString, PlayerController PC)
             // demorec [name], or demorec --name / -n [name]
             for (i = 1; i < Args.Length; i++)
             {
-                if (Args[i] ~= "--name" || Args[i] ~= "-n")
+                if (IsOptionToken(Args[i]))
                     continue;
                 WantedName $= (WantedName != "" ? "_" : "")$Args[i];
             }
@@ -236,6 +239,41 @@ function Mutate(string MutateString, PlayerController PC)
     }
 
     super.Mutate(MutateString, PC);
+}
+
+// "--name" or "-x" (a letter after a single dash)
+static function bool IsOptionToken(string Token)
+{
+    if (Len(Token) < 2 || Left(Token, 1) != "-")
+        return false;
+    if (Left(Token, 2) == "--")
+        return Len(Token) > 2;
+    return InStr("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", Mid(Token, 1, 1)) != -1;
+}
+
+// What to tell the player about options a demo command does not take (demorec takes --name / -n, demostop and
+// demostatus none), or "" when there are none. They are left out of the demo's name.
+static function string UnknownOptionsWarning(array<string> Args)
+{
+    local string Typed;
+    local int i, Count;
+    local bool bRec;
+
+    if (Args.Length == 0)
+        return "";
+    bRec = (Args[0] ~= "DEMOREC");
+    for (i = 1; i < Args.Length; i++)
+    {
+        if (!IsOptionToken(Args[i]) || (bRec && (Args[i] ~= "--name" || Args[i] ~= "-n")))
+            continue;
+        Typed $= (Count > 0 ? ", " : "")$Args[i];
+        Count++;
+    }
+    if (Count == 0)
+        return "";
+    if (!bRec)
+        return Locs(Args[0])$" has no options, so "$Typed$(Count > 1 ? " were" : " was")$" ignored.";
+    return "Unknown option"$(Count > 1 ? "s " : " ")$Typed$" for demorec (ignored). Its option: --name (-n).";
 }
 
 event Destroyed()

@@ -393,7 +393,7 @@ function ApplySpeed()
         WorldInfo.Pauser = None;
 }
 
-// The game's HUD, MutCMenu's view and this camera's own text, all off (or back on)
+// The game's HUD, MutCMenu's (or SpectatorMap's) view and this camera's own text, all off (or back on)
 exec function DemoCinematic()
 {
     SetCinematic(!bCinematic);
@@ -412,7 +412,7 @@ function SetCinematic(bool bOn)
     {
         for (i = Interactions.Length - 1; i >= 0; i--)
         {
-            if (Interactions[i] != None && Interactions[i].Class.Name == 'CMMapInteraction')
+            if (Interactions[i] != None && (Interactions[i].Class.Name == 'CMMapInteraction' || Interactions[i].Class.Name == 'SMMapInteraction'))
             {
                 HiddenInteractions.AddItem(Interactions[i]);
                 Interactions.Remove(i, 1);

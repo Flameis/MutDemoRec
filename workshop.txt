@@ -1,7 +1,8 @@
 "workshopitem"
 {
 	"appid"			"418460"
-	"publishedfileid"	"0"
+	"publishedfileid"	"3831282564"
+	"visibility"		"3"
 	"contentfolder"		""
 	"title"			"29th Demo Recorder"
 	"description"		"[h1]29th Demo Recorder[/h1]Records server demos for the RypelCam and makes them good to watch and film.

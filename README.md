@@ -76,7 +76,9 @@ Anyone can use these. With `bAdminOnlyCommands` on, only admins can (logged in a
 
 ## 5. Settings
 
-Set in WebAdmin under **Mutators > MutDemoRec Settings**, or in `MutDemoRec_Server.ini`. The page has two tabs, **Recording** and **Playback**. The labels come from `Localization\INT\MutDemoRec.int`, which a server needs next to the mod.
+**Hidden from WebAdmin for now:** the mutator's entry in the game's mutator list (`ROMutDemoRec.ini`) is commented out, so MutDemoRec doesn't show in WebAdmin's mutator list and its settings page doesn't either. To run it, add `MutDemoRec.MutDemoRec` to the server's mutators by hand (for example on the map's command line, `?mutator=...,MutDemoRec.MutDemoRec`), and set it in `MutDemoRec_Server.ini`. Taking the `;` off the start of each line in `ROMutDemoRec.ini` brings the entry and the page back.
+
+The settings page (when shown) is under **Mutators > MutDemoRec Settings**, with two tabs, **Recording** and **Playback**. The labels come from `Localization\INT\MutDemoRec.int`, which a server needs next to the mod.
 
 | Setting | What it does |
 | :--- | :--- |

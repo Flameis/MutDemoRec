@@ -1,0 +1,17 @@
+"workshopitem"
+{
+	"appid"			"418460"
+	"publishedfileid"	"0"
+	"contentfolder"		""
+	"title"			"29th Demo Recorder"
+	"description"		"[h1]29th Demo Recorder[/h1]Records server demos for the RypelCam and makes them good to watch and film.
+
+[h2]What it does[/h2][list]
+[*][b]Recording:[/b] every round, or on demand with mutate demorec, demostop and demostatus (admins only if the server wants).
+[*][b]Watching a demo:[/b] gunshots, explosions, artillery and the map's ambient sound are heard, sprinting players are shown sprinting, and the demo plays at its real speed.
+[*][b]A spectator camera[/b] like the game's own, with a cinematic mode (everything on screen off), slower, faster and pause, skip and rewind, a smooth camera and smooth camera paths.
+[/list]Settings are on the server's WebAdmin Mutators page.
+
+Made by the 29th Infantry Division Engineer Corps."
+	"changenote"		""
+}

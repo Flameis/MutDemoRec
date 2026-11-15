@@ -10,7 +10,6 @@ Server demos for the RypelCam, in one mutator. It records demos on the server an
 4. Recording commands
 5. Settings
 6. Works with the other mutators
-7. What has been checked
 
 ## 1. Recording
 
@@ -103,25 +102,3 @@ At 20 updates a second, players in a demo move in 20 steps a second. A higher up
 
 - **MutCMenu:** gives the demo camera its spectator view, so it is in the demo.
 - **MutRealismMatch:** its respawn, round restart and weapon safety commands leave the demo camera alone, so they don't reset it inside the demo.
-
-## 7. What has been checked
-
-The test harness recorded demos on a listen server with a rifle firing, played them back in the game and checked them:
-- Each shot was heard once.
-- Without the gunfire setting, shots out of the hidden camera's earshot were silent.
-- The demo was watched through the spectator camera.
-- A sound played the way explosions and artillery are played was heard.
-- MutCMenu's spectator view was on.
-- Normal speed played the demo at the real speed (it had played 4 times too fast), half speed at half, and the animations' clock kept in step.
-- A player marked sprinting in the demo was shown sprinting, and back.
-- Speed, pause, cinematic mode, the camera path, the smooth camera, skipping forward and rewinding each worked.
-- The frame rate way kept the real speed without pausing, and the player's own frame rate settings came back after.
-
-*Not yet checked:*
-- By someone watching. How the camera keys feel and how things look on screen can't be checked by the tests.
-- How the sound plays while the demo is held back between moments. The real speed uses the game's pause, and whether that makes sounds choppy can only be heard.
-- Whether holding the demo makes shadows flicker, and whether the frame rate way stops it.
-- A real player sprinting in a demo (the test marks its player as sprinting; it can't make it run).
-- `bAdminOnlyCommands` turning away someone who isn't an admin. The test for it needs a player who isn't an admin, and in the single player test game everyone is.
-- Together with the RypelCam.
-- With a demo recorded on a dedicated server. Demos from the test dedicated server don't play back properly on the test PC, which is a separate problem.
